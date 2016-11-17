@@ -9,6 +9,7 @@ import random
 #from HTMLParser import HTMLParser
 import urllib
 import sqlite3
+import threading
 
 import SimpleDownloader as downloader
 
@@ -50,15 +51,72 @@ def unescape( str ):
     str = str.replace("&quot;","\"")
     str = str.replace("&amp;","&")
     return str
+    
+    
+def download_m3u(title,url):
+    folder = plugin.get_setting('download')
+    title = re.sub('[:\\/]','',title)
+    file = folder+title+".ts"
+    log(file)
+    data = requests.get(url).content
+    lines = data.splitlines()
+    chunks = [x for x in lines if x.startswith('http')]
+    if not chunks:
+        return
+    f = xbmcvfs.File(file,"wb")
+    d = xbmcgui.DialogProgressBG()
+    d.create('Replay', 'Downloading %s' % title)
+    done = 0
+    total = len(chunks)
+    for c in chunks:
+        data = requests.get(c).content
+        f.write(data)
+        done = done + 1
+        percent = 100.0 * done / total
+        d.update(int(percent), message=title)
+    f.close()
+
+def download_file(title,url):
+    folder = plugin.get_setting('download')
+    title = re.sub('[:\\/]','',title)
+    file = folder+title+".ts"
+    log(file)
+    r = requests.get(url, stream=True)
+    f = xbmcvfs.File(file,"wb")
+    #d = xbmcgui.DialogProgressBG()
+    #d.create('Replay', 'Downloading %s' % title)
+    #done = 0
+    #total = len(chunks)
+    d = xbmcgui.Dialog()
+    total = 0
+    for chunk in r.iter_content(chunk_size=1024): 
+        if chunk:
+            f.write(chunk)
+        total = total + 1024
+        d.notification(title,str(total))
+        #done = done + 1
+        #percent = 100.0 * done / total
+        #d.update(int(percent), message=title)
+    f.close()
+    
 
 @plugin.route('/download/<name>/<url>')
 def download(name,url):
-    downloads = plugin.get_storage('downloads')
-    downloads[name] = url
-    dl = downloader.SimpleDownloader()
-    params = { "url": url, "download_path": plugin.get_setting('download') }
-    dl.download(name, params)
-
+    cleanurl = re.sub('\?.*','',url)
+    if cleanurl.endswith('m3u8'):
+        threading.Thread(target=download_m3u,args=[name,url]).start()
+    elif cleanurl.endswith('.mkv') or cleanurl.endswith('.mp4') or cleanurl.endswith('.avi'):
+        threading.Thread(target=download_file,args=[name,url]).start()
+    else:
+        threading.Thread(target=download_file,args=[name,url]).start()
+        '''
+        downloads = plugin.get_storage('downloads')
+        downloads[name] = url
+        dl = downloader.SimpleDownloader()
+        params = { "url": url, "download_path": plugin.get_setting('download') }
+        dl.download(name, params)
+        '''
+        
 @plugin.route('/stop_downloads')
 def stop_downloads():
     downloads = plugin.get_storage('downloads')
