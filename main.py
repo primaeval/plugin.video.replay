@@ -1,0 +1,159 @@
+from rpc import RPC
+from xbmcswift2 import Plugin
+import re
+import requests
+import xbmc,xbmcaddon,xbmcvfs,xbmcgui
+import xbmcplugin
+import base64
+import random
+#from HTMLParser import HTMLParser
+import urllib
+import sqlite3
+
+import SimpleDownloader as downloader
+
+
+plugin = Plugin()
+big_list_view = False
+
+
+def addon_id():
+    return xbmcaddon.Addon().getAddonInfo('id')
+
+def log(v):
+    xbmc.log(repr(v))
+
+#log(sys.argv)
+
+def get_icon_path(icon_name):
+    if plugin.get_setting('user.icons') == "true":
+        user_icon = "special://profile/addon_data/%s/icons/%s.png" % (addon_id(),icon_name)
+        if xbmcvfs.exists(user_icon):
+            return user_icon
+    return "special://home/addons/%s/resources/img/%s.png" % (addon_id(),icon_name)
+
+def remove_formatting(label):
+    label = re.sub(r"\[/?[BI]\]",'',label)
+    label = re.sub(r"\[/?COLOR.*?\]",'',label)
+    return label
+
+def escape( str ):
+    str = str.replace("&", "&amp;")
+    str = str.replace("<", "&lt;")
+    str = str.replace(">", "&gt;")
+    str = str.replace("\"", "&quot;")
+    return str
+
+def unescape( str ):
+    str = str.replace("&lt;","<")
+    str = str.replace("&gt;",">")
+    str = str.replace("&quot;","\"")
+    str = str.replace("&amp;","&")
+    return str
+
+@plugin.route('/download/<name>/<url>')
+def download(name,url):
+    downloads = plugin.get_storage('downloads')
+    downloads[name] = url
+    dl = downloader.SimpleDownloader()
+    params = { "url": url, "download_path": plugin.get_setting('download') }
+    dl.download(name, params)
+
+@plugin.route('/stop_downloads')
+def stop_downloads():
+    downloads = plugin.get_storage('downloads')
+    dl = downloader.SimpleDownloader()
+    dl._stopCurrentDownload()
+    log(dl._getQueue())
+    for name in downloads.keys():
+        dl._removeItemFromQueue(name)
+        del downloads[name]
+
+@plugin.route('/start_downloads')
+def start_downloads():
+    dl = downloader.SimpleDownloader()
+    dl._processQueue()
+
+@plugin.route('/play/<url>')
+def play(url):
+    xbmc.executebuiltin('PlayMedia("%s")' % url)
+
+@plugin.route('/execute/<url>')
+def execute(url):
+    xbmc.executebuiltin(url)
+
+@plugin.route('/browse_all')
+def browse_all():
+    conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
+    c = conn.cursor()
+    c.execute('CREATE TABLE IF NOT EXISTS played (title TEXT, file TEXT, date TIMESTAMP, PRIMARY KEY(date))')
+    items = []
+    for row in c.execute('SELECT DISTINCT title,file FROM played ORDER BY date DESC'):
+        (title,file)   = row
+        #log((title,year,file,link))
+        context_items = []
+        context_items.append(("[COLOR yellow][B]%s[/B][/COLOR] " % 'Download', 'XBMC.RunPlugin(%s)' % (plugin.url_for(download, name=title, url=file))))
+        items.append(
+        {
+            'label': "%s" % title,
+            'path': file,#plugin.url_for('select', title=title,year=year),
+            'thumbnail':get_icon_path('files'),
+            'is_playable': True,
+            'context_menu': context_items,
+        })
+    conn.commit()
+    conn.close()
+    return items
+
+@plugin.route('/clear_database')
+def clear_database():
+    conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
+    c = conn.cursor()
+    c.execute('DROP TABLE played')
+    conn.commit()
+    conn.close()
+
+@plugin.route('/')
+def index():
+    items = []
+    items.append(
+    {
+        'label': "All",
+        'path': plugin.url_for('browse_all'),
+        'thumbnail':get_icon_path('movies'),
+
+    })
+
+    items.append(
+    {
+        'label': "Clear Database",
+        'path': plugin.url_for('clear_database'),
+        'thumbnail':get_icon_path('movies'),
+
+    })
+    items.append(
+    {
+        'label': "Start Downloads",
+        'path': plugin.url_for('start_downloads'),
+        'thumbnail':get_icon_path('movies'),
+
+    })
+    items.append(
+    {
+        'label': "Stop Downloads",
+        'path': plugin.url_for('stop_downloads'),
+        'thumbnail':get_icon_path('movies'),
+
+    })
+    return items
+
+
+
+if __name__ == '__main__':
+
+    plugin.run()
+    if big_list_view == True:
+        view_mode = int(plugin.get_setting('view_mode'))
+        plugin.set_view_mode(view_mode)
+    plugin.set_view_mode(51)
+    plugin.set_content("files")
