@@ -54,11 +54,17 @@ def unescape( str ):
 
 
 def download_m3u(title,url):
+    headers = {}
+    if header:
+        heads = header.split("|") #TODO
+        for h in heads:
+            key,value = h.split("=")
+            headers[key] = value
     folder = plugin.get_setting('download')
     title = re.sub('[:\\/]','',title)
     file = folder+title+".ts"
     #log(file)
-    data = requests.get(url).content
+    data = requests.get(url,headers=headers).content
     lines = data.splitlines()
     chunks = [x for x in lines if x.startswith('http')]
     if not chunks:
@@ -69,7 +75,7 @@ def download_m3u(title,url):
     done = 0
     total = len(chunks)
     for c in chunks:
-        data = requests.get(c).content
+        data = requests.get(c,headers=headers).content
         f.write(data)
         done = done + 1
         percent = 100.0 * done / total
@@ -77,12 +83,19 @@ def download_m3u(title,url):
             d.update(int(percent), message=title)
     f.close()
 
-def download_file(title,url):
+def download_file(title,url,header):
+    headers = {}
+    if header:
+        heads = header.split("|") #TODO
+        for h in heads:
+            key,value = h.split("=")
+            headers[key] = value
+            
     folder = plugin.get_setting('download')
     title = re.sub('[:\\/]','',title)
     file = folder+title+".ts"
     #log(file)
-    r = requests.get(url, stream=True)
+    r = requests.get(url, stream=True, headers=headers)
     f = xbmcvfs.File(file,"wb")
     #d = xbmcgui.DialogProgressBG()
     #d.create('Replay', 'Downloading %s' % title)
@@ -93,6 +106,8 @@ def download_file(title,url):
     for chunk in r.iter_content(chunk_size=1024):
         if chunk:
             f.write(chunk)
+        else:
+            break
         total = total + 1024
         if plugin.get_setting('notify') == 'true':
             d.notification(title,str(total))
@@ -104,13 +119,16 @@ def download_file(title,url):
 
 @plugin.route('/download/<name>/<url>')
 def download(name,url):
+    (head,header) = url.split('|',1)
+    if header:
+        url = head
     cleanurl = re.sub('\?.*','',url)
     if cleanurl.endswith('m3u8'):
-        threading.Thread(target=download_m3u,args=[name,url]).start()
+        threading.Thread(target=download_m3u,args=[name,url,header]).start()
     elif cleanurl.endswith('.mkv') or cleanurl.endswith('.mp4') or cleanurl.endswith('.avi'):
-        threading.Thread(target=download_file,args=[name,url]).start()
+        threading.Thread(target=download_file,args=[name,url,header]).start()
     else:
-        threading.Thread(target=download_file,args=[name,url]).start()
+        threading.Thread(target=download_file,args=[name,url,header]).start()
         '''
         downloads = plugin.get_storage('downloads')
         downloads[name] = url
@@ -151,13 +169,13 @@ def browse(table):
     for row in c.execute('SELECT DISTINCT title,file FROM %s ORDER BY date DESC' % table):
         (title,file)   = row
         #log((title,year,file,link))
-        if title == "..":
+        if not title or (title == ".."):
             continue
         context_items = []
         context_items.append(("[COLOR yellow][B]%s[/B][/COLOR] " % 'Download', 'XBMC.RunPlugin(%s)' % (plugin.url_for(download, name=title, url=file))))
         items.append(
         {
-            'label': "%s" % title,
+            'label': "%s [COLOR dimgray][%s][/COLOR]" % (title,file),
             'path': file,#plugin.url_for('select', title=title,year=year),
             'thumbnail':get_icon_path('files'),
             'is_playable': True,
