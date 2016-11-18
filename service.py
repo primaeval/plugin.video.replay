@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import datetime
+import datetime, time
 import xbmc
 import xbmcaddon
 import xbmcvfs
@@ -26,24 +26,37 @@ class KodiPlayer(xbmc.Player):
 
     @classmethod
     def onPlayBackStopped(self):
-        pass
+        path = ""
+        retry = 0
+        while not path and retry < 50:
+            path = xbmc.getInfoLabel('ListItem.FileNameAndPath')
+            #log(("PPP",path))
+            retry=retry+1
+            time.sleep(0.1)
+        label = xbmc.getInfoLabel('ListItem.Label')
+        #log(("ZZZ",label,path))
+        conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
+        c = conn.cursor()
+        c.execute("INSERT OR REPLACE INTO links VALUES (?,?,?)", (label,path,datetime.datetime.now()))
+        conn.commit()
+        conn.close()
 
     def onPlayBackStarted(self):
-        log("XXX")
         file = self.getPlayingFile()
-        log(file)
+        #log(file)
         response = RPC.player.get_item(playerid=1, properties=["title", "year", "thumbnail", "fanart", "showtitle", "season", "episode"])
-        log(response)
+        #log(response)
         item = response["item"]
         conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
         c = conn.cursor()
-        c.execute("INSERT OR REPLACE INTO played VALUES (?,?,?)", (item["label"],file,datetime.datetime.now()))
+        c.execute("INSERT OR REPLACE INTO streams VALUES (?,?,?)", (item["label"],file,datetime.datetime.now()))
         conn.commit()
         conn.close()
 
 conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
 c = conn.cursor()
-c.execute('CREATE TABLE IF NOT EXISTS played (title TEXT, file TEXT, date TIMESTAMP, PRIMARY KEY(file))')
+c.execute('CREATE TABLE IF NOT EXISTS streams (title TEXT, file TEXT, date TIMESTAMP, PRIMARY KEY(file))')
+c.execute('CREATE TABLE IF NOT EXISTS links (title TEXT, file TEXT, date TIMESTAMP, PRIMARY KEY(file))')
 conn.commit()
 conn.close()
 

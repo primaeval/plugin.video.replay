@@ -1,11 +1,7 @@
 <settings>
 <category label="Basic">
 
-<setting label="Search Engine" type="select" id="engine" default="google.co.uk" values="google.co.uk|bing.com" />
-<setting label="Links" type="slider" id="links" subsetting="false" default="1" range="1,1,10" option="int" />
-<setting label="Exclude|Keywords " type="text" id="exclude"/>
-<setting label="Include|Keywords " type="text" id="include"/>
-<setting id="everything" label="Show Everything" type="bool" default="false" />
+<setting id="notify" label="Show Download Notifications" type="bool" default="false" />
 <setting label="Download Folder" type="folder" id="download" source="auto" option="writeable" />
 </category>
 

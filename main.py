@@ -51,13 +51,13 @@ def unescape( str ):
     str = str.replace("&quot;","\"")
     str = str.replace("&amp;","&")
     return str
-    
-    
+
+
 def download_m3u(title,url):
     folder = plugin.get_setting('download')
     title = re.sub('[:\\/]','',title)
     file = folder+title+".ts"
-    log(file)
+    #log(file)
     data = requests.get(url).content
     lines = data.splitlines()
     chunks = [x for x in lines if x.startswith('http')]
@@ -73,14 +73,15 @@ def download_m3u(title,url):
         f.write(data)
         done = done + 1
         percent = 100.0 * done / total
-        d.update(int(percent), message=title)
+        if plugin.get_setting('notify') == 'true':
+            d.update(int(percent), message=title)
     f.close()
 
 def download_file(title,url):
     folder = plugin.get_setting('download')
     title = re.sub('[:\\/]','',title)
     file = folder+title+".ts"
-    log(file)
+    #log(file)
     r = requests.get(url, stream=True)
     f = xbmcvfs.File(file,"wb")
     #d = xbmcgui.DialogProgressBG()
@@ -89,16 +90,17 @@ def download_file(title,url):
     #total = len(chunks)
     d = xbmcgui.Dialog()
     total = 0
-    for chunk in r.iter_content(chunk_size=1024): 
+    for chunk in r.iter_content(chunk_size=1024):
         if chunk:
             f.write(chunk)
         total = total + 1024
-        d.notification(title,str(total))
+        if plugin.get_setting('notify') == 'true':
+            d.notification(title,str(total))
         #done = done + 1
         #percent = 100.0 * done / total
         #d.update(int(percent), message=title)
     f.close()
-    
+
 
 @plugin.route('/download/<name>/<url>')
 def download(name,url):
@@ -116,13 +118,13 @@ def download(name,url):
         params = { "url": url, "download_path": plugin.get_setting('download') }
         dl.download(name, params)
         '''
-        
+
 @plugin.route('/stop_downloads')
 def stop_downloads():
     downloads = plugin.get_storage('downloads')
     dl = downloader.SimpleDownloader()
     dl._stopCurrentDownload()
-    log(dl._getQueue())
+    #log(dl._getQueue())
     for name in downloads.keys():
         dl._removeItemFromQueue(name)
         del downloads[name]
@@ -140,15 +142,17 @@ def play(url):
 def execute(url):
     xbmc.executebuiltin(url)
 
-@plugin.route('/browse_all')
-def browse_all():
+@plugin.route('/browse/<table>')
+def browse(table):
     conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
     c = conn.cursor()
-    c.execute('CREATE TABLE IF NOT EXISTS played (title TEXT, file TEXT, date TIMESTAMP, PRIMARY KEY(date))')
+    c.execute('CREATE TABLE IF NOT EXISTS %s (title TEXT, file TEXT, date TIMESTAMP, PRIMARY KEY(date))' % table)
     items = []
-    for row in c.execute('SELECT DISTINCT title,file FROM played ORDER BY date DESC'):
+    for row in c.execute('SELECT DISTINCT title,file FROM %s ORDER BY date DESC' % table):
         (title,file)   = row
         #log((title,year,file,link))
+        if title == "..":
+            continue
         context_items = []
         context_items.append(("[COLOR yellow][B]%s[/B][/COLOR] " % 'Download', 'XBMC.RunPlugin(%s)' % (plugin.url_for(download, name=title, url=file))))
         items.append(
@@ -167,7 +171,8 @@ def browse_all():
 def clear_database():
     conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
     c = conn.cursor()
-    c.execute('DROP TABLE played')
+    c.execute('DROP TABLE streams')
+    c.execute('DROP TABLE links')
     conn.commit()
     conn.close()
 
@@ -176,12 +181,18 @@ def index():
     items = []
     items.append(
     {
-        'label': "All",
-        'path': plugin.url_for('browse_all'),
+        'label': "Streams",
+        'path': plugin.url_for('browse', table='streams'),
         'thumbnail':get_icon_path('movies'),
 
     })
+    items.append(
+    {
+        'label': "Links",
+        'path': plugin.url_for('browse', table='links'),
+        'thumbnail':get_icon_path('movies'),
 
+    })
     items.append(
     {
         'label': "Clear Database",
@@ -213,5 +224,4 @@ if __name__ == '__main__':
     if big_list_view == True:
         view_mode = int(plugin.get_setting('view_mode'))
         plugin.set_view_mode(view_mode)
-    plugin.set_view_mode(51)
-    plugin.set_content("files")
+        plugin.set_content("files")
