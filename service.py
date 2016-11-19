@@ -26,7 +26,7 @@ class KodiPlayer(xbmc.Player):
 
     @classmethod
     def onPlayBackStopped(self):
-        path = "-"
+        path = ""
         retry = 0
         while not path and retry < 50:
             path = xbmc.getInfoLabel('ListItem.FileNameAndPath')
