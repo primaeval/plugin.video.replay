@@ -53,7 +53,7 @@ def unescape( str ):
     return str
 
 
-def download_m3u(title,url):
+def download_m3u(title,url,header):
     headers = {}
     if header:
         heads = header.split("|") #TODO
@@ -82,6 +82,7 @@ def download_m3u(title,url):
         if plugin.get_setting('notify') == 'true':
             d.update(int(percent), message=title)
     f.close()
+    d.close()
 
 def download_file(title,url,header):
     headers = {}
@@ -95,33 +96,37 @@ def download_file(title,url,header):
     title = re.sub('[:\\/]','',title)
     file = folder+title+".ts"
     #log(file)
+    total = int(requests.head(url, headers=headers).headers['Content-Length'])
+    log(total)
     r = requests.get(url, stream=True, headers=headers)
     f = xbmcvfs.File(file,"wb")
-    #d = xbmcgui.DialogProgressBG()
-    #d.create('Replay', 'Downloading %s' % title)
+    d = xbmcgui.DialogProgressBG()
+    d.create('Replay', 'Downloading %s' % title)
     #done = 0
     #total = len(chunks)
-    d = xbmcgui.Dialog()
-    total = 0
+    #d = xbmcgui.Dialog()
+    size = 0
     for chunk in r.iter_content(chunk_size=1024):
         if chunk:
             f.write(chunk)
         else:
             break
-        total = total + 1024
+        size = size + 1024
         if plugin.get_setting('notify') == 'true':
-            d.notification(title,str(total))
-        #done = done + 1
-        #percent = 100.0 * done / total
-        #d.update(int(percent), message=title)
+            #d.notification(title,str(total))
+            #done = done + 1
+            percent = 100.0 * size / total
+            d.update(int(percent), message=title)
     f.close()
-
+    d.close()
 
 @plugin.route('/download/<name>/<url>')
 def download(name,url):
-    (head,header) = url.split('|',1)
-    if header:
-        url = head
+    header = ""
+    head_header = url.split('|',1)
+    if len(head_header) == 2:
+        url = head_header[0]
+        header = head_header[1]
     cleanurl = re.sub('\?.*','',url)
     if cleanurl.endswith('m3u8'):
         threading.Thread(target=download_m3u,args=[name,url,header]).start()
