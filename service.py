@@ -16,6 +16,18 @@ def addon_id():
 def log(what):
     xbmc.log(repr(what))
 
+
+def adapt_datetime(ts):
+    # http://docs.python.org/2/library/sqlite3.html#registering-an-adapter-callable
+    return time.mktime(ts.timetuple())
+
+
+def convert_datetime(ts):
+    try:
+        return datetime.datetime.fromtimestamp(float(ts))
+    except ValueError:
+        return None
+
 class KodiPlayer(xbmc.Player):
     def __init__(self, *args, **kwargs):
         xbmc.Player.__init__(self)
@@ -36,8 +48,11 @@ class KodiPlayer(xbmc.Player):
         label = xbmc.getInfoLabel('ListItem.Label')
         #log(("ZZZ",label,path))
         conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.register_adapter(datetime.datetime, adapt_datetime)
+        sqlite3.register_converter('timestamp', convert_datetime)
         c = conn.cursor()
-        c.execute("INSERT OR REPLACE INTO links VALUES (?,?,?)", (label,path,datetime.datetime.now()))
+        if path:
+            c.execute("INSERT OR REPLACE INTO links VALUES (?,?,?)", (label,path,datetime.datetime.now()))
         conn.commit()
         conn.close()
 
@@ -48,12 +63,19 @@ class KodiPlayer(xbmc.Player):
         #log(response)
         item = response["item"]
         conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.register_adapter(datetime.datetime, adapt_datetime)
+        sqlite3.register_converter('timestamp', convert_datetime)
         c = conn.cursor()
-        c.execute("INSERT OR REPLACE INTO streams VALUES (?,?,?)", (item["label"],file,datetime.datetime.now()))
+        if file:
+            c.execute("INSERT OR REPLACE INTO streams VALUES (?,?,?)", (item["label"],file,datetime.datetime.now()))
         conn.commit()
         conn.close()
 
+
+
 conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
+sqlite3.register_adapter(datetime.datetime, adapt_datetime)
+sqlite3.register_converter('timestamp', convert_datetime)
 c = conn.cursor()
 c.execute('CREATE TABLE IF NOT EXISTS streams (title TEXT, file TEXT, date TIMESTAMP, PRIMARY KEY(file))')
 c.execute('CREATE TABLE IF NOT EXISTS links (title TEXT, file TEXT, date TIMESTAMP, PRIMARY KEY(file))')
