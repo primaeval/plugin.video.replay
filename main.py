@@ -94,7 +94,12 @@ def download_file(title,url,header):
             
     folder = plugin.get_setting('download')
     title = re.sub('[:\\/]','',title)
-    file = folder+title+".ts"
+    title = re.sub('\[.*?\]','',title)
+    if not title:
+        title = datetime.datetime.now()
+    file = folder+title
+    if not (file.endswith(".mkv") or file.endswith(".mp4") or file.endswith(".avi")):
+        file = file+".ts"
     #log(file)
     total = int(requests.head(url, headers=headers).headers['Content-Length'])
     log(total)
