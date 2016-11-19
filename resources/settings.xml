@@ -1,7 +1,8 @@
 <settings>
 <category label="Basic">
 
-<setting id="notify" label="Show Download Notifications" type="bool" default="false" />
+<setting id="url" label="Show url" type="bool" default="true" />
+<setting id="notify" label="Show Download Progress" type="bool" default="true" />
 <setting label="Download Folder" type="folder" id="download" source="auto" option="writeable" />
 </category>
 

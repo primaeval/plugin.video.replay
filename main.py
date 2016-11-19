@@ -183,9 +183,14 @@ def browse(table):
             continue
         context_items = []
         context_items.append(("[COLOR yellow][B]%s[/B][/COLOR] " % 'Download', 'XBMC.RunPlugin(%s)' % (plugin.url_for(download, name=title, url=file))))
+        title = re.sub('\[.*?\]','',title)
+        if plugin.get_setting('url') == 'true':
+            label = "%s [COLOR dimgray][%s][/COLOR]" % (title,file)
+        else:
+            label = title
         items.append(
         {
-            'label': "%s [COLOR dimgray][%s][/COLOR]" % (title,file),
+            'label': label,
             'path': file,#plugin.url_for('select', title=title,year=year),
             'thumbnail':get_icon_path('files'),
             'is_playable': True,
@@ -228,6 +233,7 @@ def index():
         'thumbnail':get_icon_path('movies'),
 
     })
+    '''
     items.append(
     {
         'label': "Start Downloads",
@@ -242,6 +248,7 @@ def index():
         'thumbnail':get_icon_path('movies'),
 
     })
+    '''
     return items
 
 
