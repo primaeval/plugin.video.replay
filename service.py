@@ -59,7 +59,10 @@ class KodiPlayer(xbmc.Player):
     def onPlayBackStarted(self):
         file = self.getPlayingFile()
         #log(file)
-        response = RPC.player.get_item(playerid=1, properties=["title", "year", "thumbnail", "fanart", "showtitle", "season", "episode"])
+        try:
+            response = RPC.player.get_item(playerid=1, properties=["title", "year", "thumbnail", "fanart", "showtitle", "season", "episode"])
+        except:
+            return
         #log(response)
         item = response["item"]
         conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
