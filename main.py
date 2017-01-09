@@ -182,7 +182,7 @@ def browse(table):
         if not title or (title == ".."):
             continue
         context_items = []
-        context_items.append(("[COLOR yellow][B]%s[/B][/COLOR] " % 'Download', 'XBMC.RunPlugin(%s)' % (plugin.url_for(download, name=title, url=file))))
+        context_items.append(("[COLOR yellow][B]%s[/B][/COLOR] " % 'Download', 'XBMC.RunPlugin(%s)' % (plugin.url_for(download, name=title.encode("utf8"), url=file))))
         title = re.sub('\[.*?\]','',title)
         if plugin.get_setting('url') == 'true':
             label = "%s [COLOR dimgray][%s][/COLOR]" % (title,file)
