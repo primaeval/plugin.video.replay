@@ -2,7 +2,7 @@
 <addon id="plugin.video.replay"
 version="0.0.1"
 name="Replay"
-provider-name="p">
+provider-name="primaeval">
 <requires>
   <import addon="xbmc.python" version="2.20.0"/>
   <import addon="script.module.xbmcswift2" version="2.4.0"/>
@@ -14,7 +14,7 @@ provider-name="p">
 </extension>
 <extension point="xbmc.service" library="service.py" />
 <extension point="xbmc.addon.metadata">
-  <summary lang="en">Replay</summary>
+  <summary lang="en">Replay Streams</summary>
   <description lang="en"></description>
   <disclaimer lang="en">.</disclaimer>
 </extension>
