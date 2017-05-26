@@ -206,6 +206,8 @@ def clear_database():
     c = conn.cursor()
     c.execute('DROP TABLE streams')
     c.execute('DROP TABLE links')
+    c.execute('CREATE TABLE IF NOT EXISTS streams (title TEXT, file TEXT, date TIMESTAMP, PRIMARY KEY(file))')
+    c.execute('CREATE TABLE IF NOT EXISTS links (title TEXT, file TEXT, date TIMESTAMP, PRIMARY KEY(file))')
     conn.commit()
     conn.close()
 

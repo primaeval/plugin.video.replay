@@ -42,28 +42,25 @@ class KodiPlayer(xbmc.Player):
         retry = 0
         while not path and retry < 50:
             path = xbmc.getInfoLabel('ListItem.FileNameAndPath')
-            #log(("PPP",path))
             retry=retry+1
             time.sleep(0.1)
         label = xbmc.getInfoLabel('ListItem.Label')
-        #log(("ZZZ",label,path))
+
         conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
         sqlite3.register_adapter(datetime.datetime, adapt_datetime)
         sqlite3.register_converter('timestamp', convert_datetime)
         c = conn.cursor()
         if path:
-            c.execute("INSERT OR REPLACE INTO links VALUES (?,?,?)", (label,path,datetime.datetime.now()))
+            c.execute("INSERT OR REPLACE INTO links VALUES (?,?,?)", (label.decode("utf8"),path,datetime.datetime.now()))
         conn.commit()
         conn.close()
 
     def onPlayBackStarted(self):
         file = self.getPlayingFile()
-        #log(file)
         try:
             response = RPC.player.get_item(playerid=1, properties=["title", "year", "thumbnail", "fanart", "showtitle", "season", "episode"])
         except:
             return
-        #log(response)
         item = response["item"]
         conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
         sqlite3.register_adapter(datetime.datetime, adapt_datetime)
