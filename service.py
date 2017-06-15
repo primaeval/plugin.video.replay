@@ -56,8 +56,8 @@ class KodiPlayer(xbmc.Player):
         conn.close()
 
     def onPlayBackStarted(self):
-        file = self.getPlayingFile()
         try:
+            file = self.getPlayingFile()
             response = RPC.player.get_item(playerid=1, properties=["title", "year", "thumbnail", "fanart", "showtitle", "season", "episode"])
         except:
             return
