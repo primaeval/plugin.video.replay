@@ -56,9 +56,10 @@ def unescape( str ):
 def download_m3u(title,url,header):
     headers = {}
     if header:
-        heads = header.split("|") #TODO
+        heads = header.split("&") #TODO
         for h in heads:
             key,value = h.split("=")
+            headers[key] = urllib.unquote_plus(value)
             headers[key] = value
     folder = plugin.get_setting('download')
     title = re.sub('[:\\/]','',title)
