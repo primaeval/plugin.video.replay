@@ -22,7 +22,7 @@ def addon_id():
     return xbmcaddon.Addon().getAddonInfo('id')
 
 def log(v):
-    xbmc.log(repr(v))
+    xbmc.log(repr(v),xbmc.LOGERROR)
 
 #log(sys.argv)
 
@@ -87,10 +87,10 @@ def download_m3u(title,url,header):
 def download_file(title,url,header):
     headers = {}
     if header:
-        heads = header.split("|") #TODO
+        heads = header.split("&") #TODO
         for h in heads:
             key,value = h.split("=")
-            headers[key] = value
+            headers[key] = urllib.unquote_plus(value)
             
     folder = plugin.get_setting('download')
     title = re.sub('[:\\/]','',title)
