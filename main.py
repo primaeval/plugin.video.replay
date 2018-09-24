@@ -11,8 +11,9 @@ import urllib
 import sqlite3
 import threading
 import json
-import os
+import os,os.path
 import subprocess
+import stat
 import datetime
 import SimpleDownloader as downloader
 
@@ -25,7 +26,7 @@ def addon_id():
     return xbmcaddon.Addon().getAddonInfo('id')
 
 def log(v):
-    xbmc.log(json.dumps(v,indent=2),xbmc.LOGERROR)
+    xbmc.log(repr(v),xbmc.LOGERROR)
 
 #log(sys.argv)
 
@@ -175,7 +176,7 @@ def ffmpeg_location():
     if xbmcvfs.exists(ffmpeg):
         return ffmpeg
     else:
-        xbmcgui.Dialog().notification("IPTV Recorder", _("ffmpeg exe not found!"))
+        xbmcgui.Dialog().notification("Replay", "ffmpeg exe not found!")
 
 @plugin.route('/record_last')
 def record_last():
@@ -226,6 +227,7 @@ def record(name,url):
     #log(path)
 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=windows())
+
     video = xbmcvfs.File(path,'wb')
     while True:
       data = p.stdout.read(1000000)
@@ -362,6 +364,12 @@ def index():
         'path': plugin.url_for('record_last'),
         'thumbnail':get_icon_path('recordings'),
 
+    })
+    items.append(
+    {
+        'label': "Delete ffmpeg",
+        'path': plugin.url_for('delete_ffmpeg'),
+        'thumbnail':get_icon_path('settings'),
     })
     '''
     items.append(
