@@ -102,12 +102,12 @@ def download_file(title,url,header):
     title = re.sub('\[.*?\]','',title)
     if not title:
         title = datetime.datetime.now()
-    file = folder+title
+    file = os.path.join(xbmc.translatePath(folder),title)
     if not (file.endswith(".mkv") or file.endswith(".mp4") or file.endswith(".avi")):
         file = file+".ts"
     #log(file)
     total = int(requests.head(url, headers=headers).headers['Content-Length'])
-    log(total)
+    #log(total)
     r = requests.get(url, stream=True, headers=headers)
     f = xbmcvfs.File(file,"wb")
     d = xbmcgui.DialogProgressBG()
