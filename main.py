@@ -10,7 +10,10 @@ import random
 import urllib
 import sqlite3
 import threading
-
+import json
+import os
+import subprocess
+import datetime
 import SimpleDownloader as downloader
 
 
@@ -22,7 +25,7 @@ def addon_id():
     return xbmcaddon.Addon().getAddonInfo('id')
 
 def log(v):
-    xbmc.log(repr(v),xbmc.LOGERROR)
+    xbmc.log(json.dumps(v,indent=2),xbmc.LOGERROR)
 
 #log(sys.argv)
 
@@ -92,7 +95,7 @@ def download_file(title,url,header):
         for h in heads:
             key,value = h.split("=")
             headers[key] = urllib.unquote_plus(value)
-            
+
     folder = plugin.get_setting('download')
     title = re.sub('[:\\/]','',title)
     title = re.sub('\[.*?\]','',title)
@@ -125,6 +128,110 @@ def download_file(title,url,header):
             d.update(int(percent), message=title)
     f.close()
     d.close()
+
+def windows():
+    if os.name == 'nt':
+        return True
+    else:
+        return False
+
+
+def android_get_current_appid():
+    with open("/proc/%d/cmdline" % os.getpid()) as fp:
+        return fp.read().rstrip("\0")
+
+
+@plugin.route('/delete_ffmpeg')
+def delete_ffmpeg():
+    if xbmc.getCondVisibility('system.platform.android'):
+        ffmpeg_dst = '/data/data/%s/ffmpeg' % android_get_current_appid()
+        xbmcvfs.delete(ffmpeg_dst)
+
+
+def ffmpeg_location():
+    ffmpeg_src = xbmc.translatePath(plugin.get_setting('ffmpeg'))
+
+    if xbmc.getCondVisibility('system.platform.android'):
+        ffmpeg_dst = '/data/data/%s/ffmpeg' % android_get_current_appid()
+
+        if (plugin.get_setting('ffmpeg') != plugin.get_setting('ffmpeg.last')) or (not xbmcvfs.exists(ffmpeg_dst) and ffmpeg_src != ffmpeg_dst):
+            xbmcvfs.copy(ffmpeg_src, ffmpeg_dst)
+            plugin.set_setting('ffmpeg.last',plugin.get_setting('ffmpeg'))
+
+        ffmpeg = ffmpeg_dst
+    else:
+        ffmpeg = ffmpeg_src
+
+    if ffmpeg:
+        try:
+            st = os.stat(ffmpeg)
+            if not (st.st_mode & stat.S_IXUSR):
+                try:
+                    os.chmod(ffmpeg, st.st_mode | stat.S_IXUSR)
+                except:
+                    pass
+        except:
+            pass
+    if xbmcvfs.exists(ffmpeg):
+        return ffmpeg
+    else:
+        xbmcgui.Dialog().notification("IPTV Recorder", _("ffmpeg exe not found!"))
+
+@plugin.route('/record_last')
+def record_last():
+    conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
+    c = conn.cursor()
+    c.execute('CREATE TABLE IF NOT EXISTS streams (title TEXT, file TEXT, date TIMESTAMP, PRIMARY KEY(date))')
+    items = []
+    row = c.execute('SELECT DISTINCT title,file FROM streams ORDER BY date DESC').fetchone()
+    (title,file)   = row
+    #log((title,file))
+    threading.Thread(target=record,args=[title,file]).start()
+
+def sane_name(name):
+    quote = {'"': '%22', '|': '%7C', '*': '%2A', '/': '%2F', '<': '%3C', ':': '%3A', '\\': '%5C', '?': '%3F', '>': '%3E'}
+    for char in quote:
+        name = name.replace(char, quote[char])
+    return name
+
+@plugin.route('/record/<name>/<url>')
+def record(name,url):
+    #log((name,url))
+
+    url_headers = url.split('|', 1)
+    url = url_headers[0]
+    headers = {}
+    if len(url_headers) == 2:
+        sheaders = url_headers[1]
+        aheaders = sheaders.split('&')
+        if aheaders:
+            for h in aheaders:
+                k, v = h.split('=', 1)
+                headers[k] = urllib.unquote_plus(v)
+
+    kodi_recordings = xbmc.translatePath(plugin.get_setting('recordings'))
+
+    path = os.path.join(kodi_recordings, sane_name(name) + ' ' + datetime.datetime.now().strftime("%Y-%m-%d %H-%M") +'.ts')
+    if len(path) >= 260:
+        path = os.path.join(kodi_recordings,  datetime.datetime.now().strftime("%Y-%m-%d %H-%M") +'.ts')
+
+    cmd = [ffmpeg_location()]
+    for h in headers:
+        cmd.append("-headers")
+        cmd.append("%s:%s" % (h, headers[h]))
+    cmd.append("-i")
+    cmd.append(url)
+    cmd = cmd + ["-reconnect", "1", "-reconnect_at_eof", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "300", "-y", "-t", str(3600*6), "-c", "copy",'-f', 'mpegts','-']
+    #log(cmd)
+    #log(path)
+
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=windows())
+    video = xbmcvfs.File(path,'wb')
+    while True:
+      data = p.stdout.read(1000000)
+      video.write(data)
+    video.close()
+
 
 @plugin.route('/download/<name>/<url>')
 def download(name,url):
@@ -183,6 +290,7 @@ def browse(table):
         if not title or (title == ".."):
             continue
         context_items = []
+        context_items.append(("[COLOR yellow][B]%s[/B][/COLOR] " % 'Record', 'XBMC.RunPlugin(%s)' % (plugin.url_for(record, name=title.encode("utf8"), url=file))))
         context_items.append(("[COLOR yellow][B]%s[/B][/COLOR] " % 'Download', 'XBMC.RunPlugin(%s)' % (plugin.url_for(download, name=title.encode("utf8"), url=file))))
         title = re.sub('\[.*?\]','',title)
         if plugin.get_setting('url') == 'true':
@@ -231,9 +339,28 @@ def index():
     })
     items.append(
     {
+        'label': "Recordings Folder",
+        'path': plugin.get_setting('recordings'),
+        'thumbnail':get_icon_path('recordings'),
+    })
+    items.append(
+    {
+        'label': "Download Folder",
+        'path': plugin.get_setting('download'),
+        'thumbnail':get_icon_path('recordings'),
+    })
+    items.append(
+    {
         'label': "Clear Database",
         'path': plugin.url_for('clear_database'),
         'thumbnail':get_icon_path('movies'),
+
+    })
+    items.append(
+    {
+        'label': "Record Last Played",
+        'path': plugin.url_for('record_last'),
+        'thumbnail':get_icon_path('recordings'),
 
     })
     '''
