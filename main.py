@@ -305,6 +305,8 @@ def browse(table):
             'path': file,#plugin.url_for('select', title=title,year=year),
             'thumbnail':get_icon_path('files'),
             'is_playable': True,
+            'info_type': 'Video',
+            'info':{"mediatype": "movie", "title": label},
             'context_menu': context_items,
         })
     conn.commit()
