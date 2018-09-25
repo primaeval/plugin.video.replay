@@ -329,6 +329,28 @@ def clear_database():
     conn.commit()
     conn.close()
 
+
+@plugin.route('/maintenance_index')
+def maintenance_index():
+    items = []
+    items.append(
+    {
+        'label': "Clear Database",
+        'path': plugin.url_for('clear_database'),
+        'thumbnail':get_icon_path('movies'),
+
+    })
+
+    items.append(
+    {
+        'label': "Delete ffmpeg",
+        'path': plugin.url_for('delete_ffmpeg'),
+        'thumbnail':get_icon_path('settings'),
+    })
+
+
+    return items
+
 @plugin.route('/')
 def index():
     items = []
@@ -352,19 +374,14 @@ def index():
         'path': plugin.get_setting('recordings'),
         'thumbnail':get_icon_path('recordings'),
     })
-    items.append(
-    {
-        'label': "Download Folder",
-        'path': plugin.get_setting('download'),
-        'thumbnail':get_icon_path('recordings'),
-    })
-    items.append(
-    {
-        'label': "Clear Database",
-        'path': plugin.url_for('clear_database'),
-        'thumbnail':get_icon_path('movies'),
+    if plugin.get_setting('download.enable') == 'true':
+        items.append(
+        {
+            'label': "Download Folder",
+            'path': plugin.get_setting('download'),
+            'thumbnail':get_icon_path('recordings'),
+        })
 
-    })
     items.append(
     {
         'label': "Record Last Played",
@@ -372,10 +389,12 @@ def index():
         'thumbnail':get_icon_path('recordings'),
 
     })
+
+
     items.append(
     {
-        'label': "Delete ffmpeg",
-        'path': plugin.url_for('delete_ffmpeg'),
+        'label': "Maintenance",
+        'path': plugin.url_for('maintenance_index'),
         'thumbnail':get_icon_path('settings'),
     })
     '''
