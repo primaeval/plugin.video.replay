@@ -231,9 +231,12 @@ def record(name,url):
     video = xbmcvfs.File(path,'wb')
     d = xbmcgui.Dialog()
     d.notification('Replay', 'Recording %s' % name, xbmcgui.NOTIFICATION_INFO, sound=False)
+    m = xbmc.Monitor()
     while True:
-      data = p.stdout.read(1000000)
-      video.write(data)
+        if m.abortRequested():
+            break
+        data = p.stdout.read(1000000)
+        video.write(data)
     video.close()
     if plugin.get_setting('notify.record') == 'true':
         d.notification('Replay', 'Finished Recording %s' % name, xbmcgui.NOTIFICATION_INFO, sound=False)
