@@ -221,7 +221,7 @@ def record(name,url):
         cmd.append("-headers")
         cmd.append("%s:%s" % (h, headers[h]))
     cmd.append("-i")
-    cmd.append(url)
+    cmd.append(xbmc.translatePath(url))
     cmd = cmd + ["-reconnect", "1", "-reconnect_at_eof", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "300", "-y", "-t", str(3600*6), "-c", "copy",'-f', 'mpegts','-']
     #log(cmd)
     #log(path)
@@ -229,10 +229,14 @@ def record(name,url):
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=windows())
 
     video = xbmcvfs.File(path,'wb')
+    d = xbmcgui.Dialog()
+    d.notification('Replay', 'Recording %s' % name, xbmcgui.NOTIFICATION_INFO, sound=False)
     while True:
       data = p.stdout.read(1000000)
       video.write(data)
     video.close()
+    if plugin.get_setting('notify.record') == 'true'
+        d.notification('Replay', 'Finished Recording %s' % name, xbmcgui.NOTIFICATION_INFO, sound=False)
 
 
 @plugin.route('/download/<name>/<url>')
