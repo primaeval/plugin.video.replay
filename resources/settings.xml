@@ -6,8 +6,9 @@
 <setting id="recordings" label="Record Folder" type="folder" option="writeable" default="special://temp"/>
 <setting id="ffmpeg" label="ffmpeg exe" type="file" default=""/>
 <setting type="lsep" label="Download Directly"/>
-<setting id="notify" label="Show Download Progress" type="bool" default="true" />
-<setting label="Download Folder" type="folder" id="download" source="auto" option="writeable" default="special://temp"/>
+<setting id="download.enable" label="Enable Download" type="bool" default="false" />
+<setting id="notify" label="Show Download Progress" type="bool" default="true" visible="eq(-1,true)"/>
+<setting label="Download Folder" type="folder" id="download" source="auto" option="writeable" visible="eq(-2,true)" default="special://temp"/>
 </category>
 
 </settings>

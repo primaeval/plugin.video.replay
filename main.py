@@ -293,7 +293,8 @@ def browse(table):
             continue
         context_items = []
         context_items.append(("[COLOR yellow][B]%s[/B][/COLOR] " % 'Record', 'XBMC.RunPlugin(%s)' % (plugin.url_for(record, name=title.encode("utf8"), url=file))))
-        context_items.append(("[COLOR yellow][B]%s[/B][/COLOR] " % 'Download', 'XBMC.RunPlugin(%s)' % (plugin.url_for(download, name=title.encode("utf8"), url=file))))
+        if plugin.get_setting('download.enable') == 'true':
+            context_items.append(("[COLOR yellow][B]%s[/B][/COLOR] " % 'Download', 'XBMC.RunPlugin(%s)' % (plugin.url_for(download, name=title.encode("utf8"), url=file))))
         title = re.sub('\[.*?\]','',title)
         if plugin.get_setting('url') == 'true':
             label = "%s [COLOR dimgray][%s][/COLOR]" % (title,file)
