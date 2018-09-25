@@ -213,7 +213,7 @@ def record(name,url):
     kodi_recordings = xbmc.translatePath(plugin.get_setting('recordings'))
 
     path = os.path.join(kodi_recordings, sane_name(name) + ' ' + datetime.datetime.now().strftime("%Y-%m-%d %H-%M") +'.ts')
-    if len(path) >= 260:
+    if windows() and (len(path) >= 260):
         path = os.path.join(kodi_recordings,  datetime.datetime.now().strftime("%Y-%m-%d %H-%M") +'.ts')
 
     cmd = [ffmpeg_location()]
