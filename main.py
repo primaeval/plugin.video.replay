@@ -235,7 +235,7 @@ def record(name,url):
       data = p.stdout.read(1000000)
       video.write(data)
     video.close()
-    if plugin.get_setting('notify.record') == 'true'
+    if plugin.get_setting('notify.record') == 'true':
         d.notification('Replay', 'Finished Recording %s' % name, xbmcgui.NOTIFICATION_INFO, sound=False)
 
 
