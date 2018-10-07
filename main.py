@@ -195,8 +195,48 @@ def sane_name(name):
         name = name.replace(char, quote[char])
     return name
 
+def read_recordings():
+    path = 'special://profile/addon_data/%s/recording.json' % addon_id()
+    f = xbmcvfs.File(path,"r")
+    data = f.read()
+    if data:
+        recordings = json.loads(data)
+    else:
+        recordings = {}
+    f.close()
+    return recordings
+
+def write_recordings(recordings):
+    path = 'special://profile/addon_data/%s/recording.json' % addon_id()
+    f = xbmcvfs.File(path,"w")
+    json.dump(recordings,f)
+    f.close()
+
+def add_recording(name,url):
+    recordings = read_recordings()
+    recordings[url] = name
+    write_recordings(recordings)
+
+def remove_recording(url):
+    recordings = read_recordings()
+    if url in recordings:
+        del recordings[url]
+    write_recordings(recordings)
+
+def is_recording(url):
+    recordings = read_recordings()
+    if url in recordings:
+        return True
+
+def get_recording():
+    recordings = read_recordings()
+    return recordings
+
+
 @plugin.route('/record/<name>/<url>')
 def record(name,url):
+    if is_recording(url):
+        return
     #log((name,url))
 
     url_headers = url.split('|', 1)
@@ -232,11 +272,15 @@ def record(name,url):
     d = xbmcgui.Dialog()
     d.notification('Replay', 'Recording %s' % name, xbmcgui.NOTIFICATION_INFO, sound=False)
     m = xbmc.Monitor()
+    add_recording(name,url)
     while True:
         if m.abortRequested():
             break
         data = p.stdout.read(1000000)
         video.write(data)
+        if not is_recording(url):
+            break
+    remove_recording(url)
     video.close()
     if plugin.get_setting('notify.record') == 'true':
         d.notification('Replay', 'Finished Recording %s' % name, xbmcgui.NOTIFICATION_INFO, sound=False)
@@ -321,6 +365,7 @@ def browse(table):
     conn.close()
     return items
 
+
 @plugin.route('/clear_database')
 def clear_database():
     conn = sqlite3.connect(xbmc.translatePath('special://profile/addon_data/%s/replay.db' % addon_id()), detect_types=sqlite3.PARSE_DECLTYPES)
@@ -331,6 +376,21 @@ def clear_database():
     c.execute('CREATE TABLE IF NOT EXISTS links (title TEXT, file TEXT, date TIMESTAMP, PRIMARY KEY(file))')
     conn.commit()
     conn.close()
+
+
+@plugin.route('/stop_recording')
+def stop_recording():
+    recordings = get_recording()
+    items = recordings.items()
+    items.sort(key=lambda k: k[1])
+    names = [x[1] for x in items]
+    result = xbmcgui.Dialog().multiselect("Stop Recording",names)
+    if result == None:
+        return
+    for index in result:
+        url = items[index][0]
+        remove_recording(url)
+
 
 
 @plugin.route('/maintenance_index')
@@ -391,6 +451,13 @@ def index():
         'path': plugin.url_for('record_last'),
         'thumbnail':get_icon_path('recordings'),
 
+    })
+
+    items.append(
+    {
+        'label': "Stop Recording",
+        'path': plugin.url_for('stop_recording'),
+        'thumbnail':get_icon_path('settings'),
     })
 
 
